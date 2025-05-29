@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ping Pong Log Visualizer</title>
+  <style>
+    canvas {
+      border: 2px solid black;
+      background: #f0f0f0;
+      display: block;
+      margin: 20px auto;
+    }
+    #controls {
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <input type="file" id="fileInput" accept=".csv" />
+  <div id="controls">
+    <button id="playPause">Pause</button>
+  </div>
+  <canvas id="gameCanvas" width="600" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const fileInput = document.getElementById("fileInput");
+    const playPauseBtn = document.getElementById("playPause");
+
+    const GRID_SIZE = 30;
+    const PADDLE_WIDTH = 2;
+    const CELL_SIZE = canvas.width / GRID_SIZE;
+
+    let logData = [];
+    let frame = 0;
+    let playing = true;
+
+    function parseCSV(text) {
+      const lines = text.trim().split("\n");
+      const headers = lines[0].split(",");
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(",");
+        const entry = {};
+        headers.forEach((h, j) => {
+          entry[h] = isNaN(row[j]) ? row[j] : parseInt(row[j], 10);
+        });
+        logData.push(entry);
+      }
+    }
+
+    function drawFrame() {
+      if (!playing || frame >= logData.length) return;
+
+      const state = logData[frame];
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "blue";
+      ctx.fillRect(state.paddle1_x * CELL_SIZE, (GRID_SIZE - 1) * CELL_SIZE, PADDLE_WIDTH * CELL_SIZE, CELL_SIZE);
+
+      ctx.fillStyle = "green";
+      ctx.fillRect(state.paddle2_x * CELL_SIZE, 0, PADDLE_WIDTH * CELL_SIZE, CELL_SIZE);
+
+      ctx.fillStyle = "red";
+      ctx.beginPath();
+      ctx.arc(
+        state.ball_x * CELL_SIZE + CELL_SIZE / 2,
+        state.ball_y * CELL_SIZE + CELL_SIZE / 2,
+        CELL_SIZE / 3,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      frame++;
+      if (playing) setTimeout(drawFrame, 200); // 200ms delay
+    }
+
+    playPauseBtn.addEventListener("click", () => {
+      playing = !playing;
+      playPauseBtn.textContent = playing ? "Pause" : "Play";
+      if (playing) drawFrame();
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          logData = [];
+          frame = 0;
+          parseCSV(event.target.result);
+          drawFrame();
+        };
+        reader.readAsText(file);
+      }
+    });
+  </script>
+</body>
+</html>
